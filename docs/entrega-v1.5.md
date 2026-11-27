@@ -1,10 +1,10 @@
 # StockLab — Plano de evolução da versão 1.5
 
-**Unidade:** Projetos de Software · Técnico em Desenvolvimento de Sistemas (SENAI-SP)
-**Cenário:** sistema fictício de controle de estoque, herdado de uma empresa anterior (versão 1.4)
-**Equipe:** Integrante 1, Integrante 2, Integrante 3 e Integrante 4 *(substituir pelos nomes)*
-**Quadro de backlog (Trello):** https://trello.com/b/t4hgfb1b/stocklab-upgrade
-**Protótipo (Figma):** https://www.figma.com/design/BjoS4TYbN8XDma920m1Z2W/Sem-t%C3%ADtulo
+**Unidade:** Projetos de Software · Técnico em Desenvolvimento de Sistemas (SENAI-SP)  
+**Cenário:** sistema fictício de controle de estoque, herdado de uma empresa anterior (versão 1.4)  
+**Equipe:** Integrante 1, Integrante 2, Integrante 3 e Integrante 4 *(substituir pelos nomes)*  
+**Quadro de backlog (Trello):** https://trello.com/b/t4hgfb1b/stocklab-upgrade  
+**Protótipo (Figma):** https://www.figma.com/design/BjoS4TYbN8XDma920m1Z2W/Sem-t%C3%ADtulo  
 
 ---
 

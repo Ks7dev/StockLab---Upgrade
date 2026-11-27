@@ -324,6 +324,10 @@ Observação: a linha de "nenhum resultado" usa estilo inline, sem classe (`app.
 | `.dialog::backdrop` | Fundo `rgba(9,18,37,.56)` | gerado pelo navegador ao chamar `showModal()` (`app.js` L49, L52) |
 | `.dialog-inner`, `.dialog-top`, `.close-btn`, `.dialog-actions` | Corpo, topo, botão de fechar e rodapé de ações | HTML |
 | `.form-grid`, `.form-grid label`, `.form-grid input`, `.form-grid select`, `.form-grid .full` | Grade 2 colunas de campos; inputs com 44px de altura | HTML |
+| `.form-grid .field` (v1.5) | Campo em coluna (`display:flex; flex-direction:column; gap:8px`) com `label`, input e mensagem de erro; usado em Quantidade | HTML (`#movement-form`) |
+| `.form-hint` (v1.5) | Texto auxiliar de 12px na cor `var(--muted)`; usado em `#move-balance` (prévia de saldo) | HTML |
+| `.field-error` (v1.5) | Mensagem de erro de 12px, peso 600, cor `var(--red)`; usado em `#move-quantity-error` | HTML |
+| `.form-grid input[aria-invalid="true"]` (v1.5) | Borda e contorno em `var(--red)` no campo com erro | `app.js` (`showMovementError` define `aria-invalid`) |
 
 O `dialog` não declara `display`: abrir e fechar dependem do comportamento padrão do navegador (`showModal()` e `close()`).
 

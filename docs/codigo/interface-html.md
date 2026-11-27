@@ -17,7 +17,7 @@ Este documento descreve a estrutura estática do `index.html`: regiões, abas, i
 | Esquema de cor | `<meta name="color-scheme" content="light">` | index.html L6 |
 | Título | `StockLab \| Painel de estoque` | index.html L7 |
 | Folha de estilo | `<link rel="stylesheet" href="styles.css">` | index.html L8 |
-| Script | `<script defer src="app.js"></script>` (único script; `defer` garante que o DOM exista quando o `app.js` roda) | index.html L9 |
+| Script | `<script defer src="app.js"></script>` (`defer` garante que o DOM exista quando o `app.js` roda). **v1.5:** `<script defer src="regras.js"></script>` foi inserido antes dele (regra pura `aplicarMovimentacao`, ver [app-js.md](app-js.md) 4.22), então o `app.js` passa a ser o segundo script | index.html L9 |
 
 Nenhuma fonte, biblioteca ou recurso externo é referenciado no HTML. O CSS cita a família `Inter` na pilha de fontes, mas não há `@font-face` nem `<link>` para carregá-la (ver [css.md](css.md)).
 
@@ -231,6 +231,8 @@ Observações:
 > Efeito: alterar o preço no diálogo "Editar produto" não tem efeito; só o cadastro grava o preço. Tratado no plano v1.5, cartão #3.
 
 ### 6.2 Movimentação (`#movement-form`, index.html L52)
+
+> **Atualizado na v1.5 (issue #1).** O diálogo foi reescrito em várias linhas e as linhas citadas nesta seção são da v1.4. Mudanças: `#movement-form` ganhou `novalidate` (a validação é feita pelo JS, com a mesma mensagem em Chrome e Firefox); o campo Quantidade ficou em `div.field` com `label[for="move-quantity"]`, o input com `inputmode="numeric"` e `aria-describedby="move-balance move-quantity-error"`, e logo abaixo `p#move-quantity-error.field-error[role="alert"][hidden]` (fora do `<label>`); entre Quantidade e Observação entrou `p#move-balance.full.form-hint[aria-live="polite"]`, com a prévia `Saldo atual: X un. · Após a saída: Y un.`. Os demais ids e textos foram preservados. As mensagens de erro listadas abaixo foram substituídas pelas de `aplicarMovimentacao` (ver [regras-de-negocio.md](regras-de-negocio.md), D1).
 
 Título `h2`: estático "Nova movimentação" (não é alterado por JS). Overline "OPERAÇÃO". Botões: "Cancelar" (`type="button"`, `data-close`) e "Registrar movimentação" (`type="submit"`).
 

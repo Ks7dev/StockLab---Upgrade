@@ -4,6 +4,9 @@ Versão documentada: StockLab v1.4 (app.js 65 linhas, index.html 54 linhas, styl
 
 [Voltar ao README](README.md)
 
+> **Nota de versão (v1.5).** Este documento descreve a v1.4, exceto onde marcado "v1.5". A issue #1 corrigiu D1: R15 e R17 e o fluxo da
+> seção 3.3 foram atualizados; as referências `Lnn` são da v1.4 original (commit `ceb1b68`), pois o `app.js` foi reformatado com Prettier.
+
 Este documento é o ponto único de verdade das regras de negócio e dos defeitos do StockLab v1.4. Os demais
 documentos de `docs/codigo/` apenas referenciam os IDs `R..` (regras) e `D..` (defeitos) definidos aqui.
 
@@ -35,20 +38,20 @@ formato `app.js L53` e `index.html L51`; para o CSS (uma linha só) usa-se o sel
 
 | Status | Quantidade | Regras |
 |---|---|---|
-| Correto | 15 | R01, R05, R07, R13, R14, R15, R16, R20, R21, R23, R25, R26, R27, R28, R29 |
-| Defeituoso | 5 | R11, R12, R17, R18, R22 |
+| Correto | 16 | R01, R05, R07, R13, R14, R15, R16, R17, R20, R21, R23, R25, R26, R27, R28, R29 |
+| Defeituoso | 4 | R11, R12, R18, R22 |
 | Limitação | 8 | R02, R03, R04, R06, R08, R10, R19, R24 |
 | Ausente | 1 | R09 |
 | **Total** | **29** | |
 
-Observações de classificação: R15 e R26 carregam ressalvas (R15 é "correto, mas ineficaz por D1"; R26 é
-"correto / limitação por D12") e foram contadas como Correto.
+Observações de classificação: R26 carrega ressalva ("correto / limitação por D12") e foi contada como Correto.
+Na v1.5 (issue #1), R15 passou a efetiva e R17 passou de Defeituoso a Correto (D1 corrigido).
 
 Defeitos com cartão no plano v1.5 (ver [plano-v1.5.md](../plano-v1.5.md)):
 
 | Defeito | Título | Cartão |
 |---|---|---|
-| D1 | Saída não reduz o estoque | #1 |
+| D1 | Saída não reduz o estoque | #1 (**corrigido na v1.5**) |
 | D2 | Edição não grava o preço | #3 |
 | D3 | "Valor em estoque" soma só os preços unitários | #2 |
 | D4 | Exclusão de produto sem confirmação | #4 |
@@ -232,17 +235,17 @@ function removeProduct(id){data.products=data.products.filter(p=>p.id!==id);pers
 
 ### 3.3 Movimentação
 
-O diagrama resume as decisões de `saveMovement` (`app.js` L53), na ordem em que o código as avalia.
+O diagrama resume as decisões de `saveMovement` (v1.4 L53) e, desde a v1.5, de `aplicarMovimentacao` (`regras.js`), na ordem em que são avaliadas.
 
 ```mermaid
 flowchart TD
-    A["Envio do formulario de movimentacao"] --> B{"Produto existe e quantidade inteira maior ou igual a 1"}
-    B -->|"Nao"| E1["Toast: Verifique os dados da movimentacao"]
-    B -->|"Sim"| C{"Tipo e saida e quantidade maior que o estoque"}
-    C -->|"Sim"| E2["Toast: quantidade supera o estoque. Dialogo continua aberto"]
+    A["Envio do formulario de movimentacao"] --> B{"aplicarMovimentacao: produto valido, tipo entrada ou saida, quantidade inteira maior que zero"}
+    B -->|"Nao"| E1["Erro: mensagem sob Quantidade (ou toast para produto e tipo). Dialogo aberto, nada gravado"]
+    B -->|"Sim"| C{"Tipo e saida e quantidade maior que o saldo"}
+    C -->|"Sim"| E2["Erro sob Quantidade: Saida de X un. maior que o saldo atual. Dialogo aberto, nada gravado"]
     C -->|"Nao"| D{"Tipo e entrada"}
     D -->|"Sim"| F["Soma a quantidade ao estoque"]
-    D -->|"Nao"| G["Estoque nao muda: vale para saida e para tipo desconhecido"]
+    D -->|"Nao"| G["Subtrai a quantidade do estoque"]
     F --> H["Acrescenta movimentacao com nome do produto e data ISO UTC"]
     G --> H
     H --> I["persist, render, fecha dialogo, toast de sucesso"]
@@ -265,7 +268,9 @@ if(!data.products.length){notify('Cadastre um produto antes de movimentar.');ret
 **Regra implementada:** a movimentação exige que o produto escolhido exista e que a quantidade seja inteira e maior ou igual a 1.
 O HTML também usa `min="1" step="1" required` (`index.html` L52).
 
-**Código:** `app.js` L53.
+**v1.5 (issue #1):** a validação passou para `aplicarMovimentacao` (`regras.js`), que recusa quantidade que não seja número inteiro seguro maior que zero, com a mensagem `Informe uma quantidade inteira maior que zero.` exibida sob o campo Quantidade. O `#movement-form` agora tem `novalidate`, então 0, negativo, decimal e vazio chegam ao JS e recebem essa mensagem em qualquer navegador. O texto e o código abaixo são da v1.4.
+
+**Código (v1.4):** `app.js` L53.
 
 ```js
 if(!p||!Number.isInteger(quantity)||quantity<1){notify('Verifique os dados da movimentação.');return;}
@@ -283,8 +288,11 @@ if(!p||!Number.isInteger(quantity)||quantity<1){notify('Verifique os dados da mo
 if(type==='saida'&&quantity>p.stock){notify('A quantidade solicitada supera o estoque disponível.');return;}
 ```
 
-**Status:** Correto, mas ineficaz por D1: como a saída não reduz o estoque (R17), o limite comparado é sempre o estoque original.
-**Defeito relacionado:** D1. **UC afetado:** UC-07.
+**Status:** Correto (v1.5: agora efetiva, porque a saída reduz o saldo, R17).
+**Defeito relacionado:** D1 (corrigido). **UC afetado:** UC-07.
+
+**v1.5 (issue #1):** a checagem passou para `aplicarMovimentacao` (`regras.js`) e a mensagem agora é específica e aparece sob o campo Quantidade:
+`Saída de X un. maior que o saldo atual (Y un.) de <produto>.` (ex.: `Saída de 7 un. maior que o saldo atual (6 un.) de Mouse sem fio Pro.`). O diálogo continua aberto e nada é gravado. A mensagem antiga (`A quantidade solicitada supera o estoque disponível.`) foi removida.
 
 ### R16 — Entrada soma ao estoque
 
@@ -298,19 +306,18 @@ if(type==='entrada')p.stock+=quantity;
 
 **Status:** Correto. **Defeito relacionado:** nenhum. **UC afetado:** UC-07.
 
-### R17 — Saída não subtrai do estoque
+### R17 — Saída subtrai do estoque
 
-**Regra implementada:** não existe ramo que altere o estoque quando o tipo é `saida`; o registro entra no histórico e o saldo fica igual.
+**Regra implementada (v1.5):** em movimentação de saída, a quantidade é subtraída de `p.stock` (`p.stock = result.estoque`, com `result` vindo de `aplicarMovimentacao`). Na v1.4 não existia ramo para `saida`: o registro entrava no histórico e o saldo ficava igual.
 
-**Código:** `app.js` L53 (a única linha que altera `p.stock` é a de R16).
+**Código:** `regras.js` (`aplicarMovimentacao`) e `saveMovement` em `app.js`.
 
-**Status:** Defeituoso. **Defeito relacionado:** D1. **UC afetado:** UC-07.
+**Status:** Correto (v1.5). **Defeito relacionado:** D1 (corrigido). **UC afetado:** UC-07.
 
-> [!WARNING]
-> **Comportamento atual / defeito conhecido — D1: Saída não reduz o estoque**
-> `app.js` L53: `if(type==='entrada')p.stock+=quantity;` — não existe ramo para `saida`.
-> Efeito: o estoque nunca diminui por saída; unidades e alertas ficam acima do real e o bloqueio de R15 não funciona na prática.
-> Tratado no plano v1.5, cartão #1.
+> [!NOTE]
+> **Corrigido na v1.5 (issue #1) — D1: Saída não reduzia o estoque**
+> Histórico do defeito na v1.4: `app.js` L53 só tinha `if(type==='entrada')p.stock+=quantity;`, sem ramo para `saida`; unidades e alertas ficavam acima do real e o bloqueio de R15 não funcionava na prática.
+> Ver a seção D1 do catálogo, com a correção e os testes.
 
 ### R18 — A movimentação guarda o nome do produto, não o id
 
@@ -496,7 +503,9 @@ clearTimeout(notificationTimer); notificationTimer=setTimeout(()=>el.classList.r
 
 Os cenários abaixo partem dos dados de demonstração (`app.js` L5–L21) e foram derivados da leitura do código, não de execução.
 
-### D1 — Saída não reduz o estoque
+### D1 — Saída não reduz o estoque (corrigido na v1.5, issue #1)
+
+**Histórico (v1.4):**
 
 - **Onde:** `app.js` L53. **Gravidade:** Alta. **Plano v1.5:** cartão #1.
 - **Código:**
@@ -512,6 +521,15 @@ if(type==='saida'&&quantity>p.stock){notify('A quantidade solicitada supera o es
   3. Em Produtos, o Mouse continua com estoque 3 e situação "Estoque baixo".
   4. Repita quantas vezes quiser: a verificação `quantity>p.stock` compara sempre com 3, então saídas de 2 nunca são bloqueadas.
 - **Efeito:** saldo, indicador de unidades (`app.js` L37), alertas (L39–L41) e a situação (L34) ficam acima do real; o bloqueio de R15 só age para quantidades maiores que o saldo original.
+
+**Correção (v1.5, issue #1):**
+
+- `regras.js` expõe a função pura `aplicarMovimentacao(produto, tipo, quantidade)`, que não altera o produto e valida na ordem produto, tipo, quantidade, saldo. Retorna `{ ok: true, estoque }` no sucesso (entrada soma, saída subtrai) ou `{ ok: false, estoque, campo, erro }`.
+- Mensagens: `Selecione um produto válido.`, `Tipo de operação inválido.`, `Informe uma quantidade inteira maior que zero.` e `Saída de X un. maior que o saldo atual (Y un.) de <produto>.`. Quantidade aceita: número inteiro seguro maior que zero (texto não é aceito; a interface converte com `Number`).
+- `saveMovement` grava `p.stock = result.estoque` só quando `ok`; em erro o diálogo permanece aberto e nada é gravado. O diálogo mostra a prévia `Saldo atual: X un. · Após a saída: Y un.` e o erro sob Quantidade (`#move-quantity-error`).
+- **Decisão registrada:** o saldo nunca fica negativo (saída maior que o saldo é bloqueada). A pergunta ao cliente ("a saída pode deixar o saldo negativo?") continua pendente; o padrão adotado é não.
+- **Testes:** `test/unit/regras.test.js` (regra pura, `npm run test:unit`) e `test/e2e/movimentacao.e2e.test.js` (T1.1 a T1.6 no navegador, `npm run test:e2e`).
+- **Atenção:** saldos já gravados no navegador pela v1.4 (chave `stocklab.demo.v14`) permanecem inflados; usar "Restaurar dados" (ver `LEIA-ME.txt`). Não há migração (escopo da issue #5).
 
 ### D2 — Edição não grava o preço
 

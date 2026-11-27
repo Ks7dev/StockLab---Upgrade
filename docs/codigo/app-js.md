@@ -4,6 +4,11 @@ Versão documentada: StockLab v1.4 (app.js 65 linhas, index.html 54 linhas, styl
 
 [Voltar ao README](README.md)
 
+> **Nota de versão (v1.5).** As referências `Lnn` deste documento são da v1.4 original (commit `ceb1b68`); após a formatação
+> Prettier da v1.5 os números de linha mudaram. Seções atualizadas na v1.5: 4.17, 4.18, 5 (eventos do diálogo de movimentação),
+> 7.3 e a subseção `regras.js` (4.22). A regra de movimentação saiu do `app.js` e vive em `regras.js` (a seção 1 continua
+> válida para o restante: `app.js` não exporta nada nem escreve em `window`; apenas lê `window.StockLabRegras`).
+
 Este documento descreve o que o `app.js` faz hoje, função por função, com a linha do código em cada afirmação.
 Defeitos são descritos como estão, em caixas padronizadas, sem correção no texto. Os IDs `UC-xx`, `Rxx` e `Dx`
 seguem o catálogo do conjunto (ver [casos-de-uso.md](casos-de-uso.md) e [regras-de-negocio.md](regras-de-negocio.md)).
@@ -434,54 +439,55 @@ function removeProduct(id){data.products=data.products.filter(p=>p.id!==id);pers
 
 ### 4.17 `openMovement`
 
-- **Linha:** L52.
+- **Linha:** v1.4 L52 (referência original; a posição mudou com o Prettier).
 - **Assinatura:** `openMovement(): void`
 - **Lê:** `data.products`.
 - **Escreve / efeitos:**
   - Se `data.products.length === 0`: `notify('Cadastre um produto antes de movimentar.')` e `return` (R13); o diálogo não abre.
-  - Senão: `#movement-form.reset()`; `#move-product.innerHTML` ← uma `<option value="${p.id}">` por produto, com texto `${escape(p.name)} · ${escape(p.sku)}`; `#movement-dialog.showModal()`.
-- **Chamada por:** `#move-btn` (L61).
-- **Chama:** `notify`, `escape`.
+  - Senão: `#movement-form.reset()`; `#move-product.innerHTML` ← uma `<option value="${p.id}">` por produto, com texto `${escape(p.name)} · ${escape(p.sku)}`; **(v1.5)** `clearMovementError()` e `updateMovementBalance()`; `#movement-dialog.showModal()`.
+- **Chamada por:** `#move-btn`.
+- **Chama:** `notify`, `escape`, `clearMovementError`, `updateMovementBalance`.
 
-```js
-$('move-product').innerHTML=data.products.map(p=>`<option value="${p.id}">${escape(p.name)} · ${escape(p.sku)}</option>`).join('');
-```
+As opções são recriadas a cada abertura, e o `reset()` devolve `#move-type` ao primeiro item ("Entrada") e `#move-quantity` ao valor `1` (atributo `value="1"`).
+Na v1.5 o diálogo abre sem erro visível e já com a prévia `#move-balance` preenchida (por exemplo, `Saldo atual: 3 un. · Após a entrada: 4 un.`).
 
-As opções são recriadas a cada abertura, e o `reset()` devolve `#move-type` ao primeiro item ("Entrada") e `#move-quantity` ao valor `1` (atributo `value="1"`, `index.html` L52).
+#### Helpers do diálogo de movimentação (v1.5)
+
+| Função | O que faz |
+|---|---|
+| `selectedMovementProduct()` | Devolve o produto de `#move-product` (`data.products.find(x => x.id === Number(...))`) ou `undefined`. |
+| `clearMovementError()` | Esvazia e oculta `#move-quantity-error` (`textContent = ''`, `hidden = true`) e remove `aria-invalid` de `#move-quantity`. |
+| `showMovementError(message)` | Mostra `message` em `#move-quantity-error` (via `textContent`), marca `#move-quantity` com `aria-invalid="true"` e devolve o foco a ele. |
+| `updateMovementBalance()` | Escreve em `#move-balance` (via `textContent`) `Saldo atual: X un.` e, se `aplicarMovimentacao` aceitar a quantidade digitada, ` · Após a saída: Y un.` (ou `Após a entrada`). Sem produto, esvazia o texto. |
+| `onMovementFieldChange()` | `clearMovementError()` e `updateMovementBalance()`; é o handler de `change` de `#move-product` e `#move-type` e de `input` de `#move-quantity`. |
 
 ### 4.18 `saveMovement`
 
-- **Linha:** L53.
+- **Linha:** v1.4 L53 (referência original).
 - **Assinatura:** `saveMovement(event: SubmitEvent): void`
 - **Parâmetros:** `event`, o evento `submit` de `#movement-form`; só `preventDefault()` é usado.
 - **Retorno:** nenhum.
-- **Lê:** `#move-product` (`Number`), `#move-type`, `#move-quantity` (`Number`), `#move-note` (com `trim()`) e o produto `p = data.products.find(x=>x.id===id)`.
-- **Escreve / efeitos:** altera `p.stock` (só na entrada), faz `data.movements.push(...)`, chama `persist()`, `render()`, `#movement-dialog.close()` e `notify('Movimentação registrada com sucesso.')`. Nos retornos antecipados, apenas um toast.
-- **Chamada por:** evento `submit` de `#movement-form` (L61).
-- **Chama:** `notify`, `persist`, `render`.
+- **Lê:** `#move-type`, `#move-quantity` (`Number`), `#move-note` (com `trim()`) e o produto `p = selectedMovementProduct()`.
+- **Escreve / efeitos:** em caso de sucesso, `p.stock = result.estoque` (entrada soma, saída subtrai), `data.movements.push(...)`, `persist()`, `render()`, `#movement-dialog.close()` e `notify('Movimentação registrada com sucesso.')`. Em erro, nada é gravado nem persistido e o diálogo continua aberto.
+- **Chamada por:** evento `submit` de `#movement-form`.
+- **Chama:** `selectedMovementProduct`, `aplicarMovimentacao` (de `regras.js`), `showMovementError`, `notify`, `persist`, `render`.
 
-Passo a passo (todos em L53):
+Passo a passo (v1.5):
 
-1. `event.preventDefault()` e leitura dos campos.
-2. Validação: `!p || !Number.isInteger(quantity) || quantity<1` leva a `notify('Verifique os dados da movimentação.')` e `return` (R14).
-3. Se `type==='saida' && quantity>p.stock`: `notify('A quantidade solicitada supera o estoque disponível.')` e `return` (R15). O diálogo continua aberto e nada é gravado.
-4. `if(type==='entrada')p.stock+=quantity;` (R16). Não existe ramo para `saida` (R17).
-5. `data.movements.push({id: Math.max(0, ...ids) + 1, product: p.name, type, quantity, note, date: new Date().toISOString()})` (R10, R18). O `type` é gravado exatamente como lido do select, sem validação (R19).
+1. `event.preventDefault()` é a primeira instrução; depois lê tipo, quantidade (`Number(...)`), observação e produto.
+2. `result = aplicarMovimentacao(p, type, quantity)`. Toda a validação (produto, tipo, quantidade inteira maior que zero e saída maior que o saldo) está na regra pura, na ordem produto, tipo, quantidade, saldo (R14, R15).
+3. Se `!result.ok`: quando `result.campo === 'quantidade'`, `showMovementError(result.erro)` (mensagem sob o campo Quantidade, com foco e `aria-invalid`); nos demais casos (`produto`, `tipo`), `notify(result.erro)`. Em ambos, `return`: não há `push`, `persist` nem `close`.
+4. `p.stock = result.estoque` (R16 para entrada; R17 para saída, que agora subtrai).
+5. `data.movements.push({id: Math.max(0, ...ids) + 1, product: p.name, type, quantity, note, date: new Date().toISOString()})` (R10, R18), com os mesmos campos da v1.4. Como a regra só aceita `entrada` e `saida`, um tipo desconhecido não chega mais ao histórico por esta tela.
 6. `persist()`, `render()`, `close()` e o toast de sucesso.
 
-```js
-if(type==='entrada')p.stock+=quantity;data.movements.push({id:Math.max(0,...data.movements.map(m=>m.id))+1,product:p.name,type,quantity,note,date:new Date().toISOString()});
-```
+**Interação com `<form method="dialog">` e `preventDefault()`.** `#movement-form` é `method="dialog"`, e `event.preventDefault()` impede o fechamento automático; o diálogo só fecha pelo `close()` do passo 6.
+Na v1.5 o formulário tem `novalidate`: o navegador não bloqueia mais quantidade vazia, `0`, negativa ou decimal com balão nativo (cujo texto varia entre Chrome e Firefox). Esses valores chegam ao JS e recebem a mesma mensagem, `Informe uma quantidade inteira maior que zero.`, em `#move-quantity-error` (`role="alert"`). Os atributos `required`, `min="1"` e `step="1"` continuam no input por semântica e teclado.
+O erro some quando o usuário altera produto, tipo ou quantidade (`onMovementFieldChange`) e ao reabrir o diálogo.
 
-**Interação com `<form method="dialog">` e `preventDefault()`.** Vale o mesmo raciocínio de `saveProduct`: `#movement-form` é `method="dialog"` (`index.html` L52), e
-`event.preventDefault()` impede o fechamento automático. O diálogo só fecha pelo `close()` do passo 6; nos retornos dos passos 2 e 3 ele permanece aberto, com o toast de erro.
-Antes do `submit`, o navegador exige `#move-product` (`required`) e `#move-quantity` (`required`, `min="1"`, `step="1"`), de modo que quantidade vazia não chega ao JS;
-se chegasse, `Number('') === 0` seria barrado no passo 2 por `quantity<1`.
-
-> [!WARNING]
-> **Comportamento atual / defeito conhecido — D1: Saída não reduz o estoque**
-> `app.js` L53: `if(type==='entrada')p.stock+=quantity;` — não existe ramo para `saida`.
-> Efeito: uma saída válida é gravada no histórico e exibida com sinal `-`, mas `p.stock` não muda. Além disso, a checagem do passo 3 compara a quantidade com um estoque que nunca diminui por saídas: com estoque 3 é possível registrar várias saídas de 3 em sequência, e o saldo continua 3. Tratado no plano v1.5, cartão #1.
+> [!NOTE]
+> **Corrigido na v1.5 (issue #1) — D1: saída agora reduz o estoque**
+> `saveMovement` usa `aplicarMovimentacao` e grava `p.stock = result.estoque`: a saída subtrai e uma saída maior que o saldo é bloqueada com `Saída de X un. maior que o saldo atual (Y un.) de <produto>.`, sem alterar saldo nem histórico. Cobertura: `test/unit/regras.test.js` e `test/e2e/movimentacao.e2e.test.js`. Saldos gravados no navegador pela v1.4 continuam inflados até "Restaurar dados" (ver `LEIA-ME.txt`).
 
 > [!WARNING]
 > **Comportamento atual / defeito conhecido — D5: movimentação referencia o produto pelo nome**
@@ -549,6 +555,23 @@ if(confirm('Restaurar os dados iniciais da demonstração? ...')){data=initialDa
 
 Não muda de aba (`tab` não é chamada) e não fecha diálogos (R27). Como `#reset-btn` fica no bloco `hero` do `index.html` (L27), fora das seções `.tab-content`, o botão está disponível em todas as abas; o mesmo vale para `#add-btn`.
 
+### 4.22 `regras.js` e `aplicarMovimentacao` (v1.5)
+
+`regras.js` (raiz do projeto) contém a regra de movimentação como função pura, sem DOM, sem `Date` e sem `localStorage`. É um UMD mínimo (IIFE): no navegador publica `window.StockLabRegras`; no Node, `module.exports`. É carregado por `<script defer src="regras.js">` antes de `app.js`, e `app.js` faz `const { aplicarMovimentacao } = window.StockLabRegras;` logo após `'use strict'`. Sem `import`/`export` (não funcionam via `file://`). O objeto exportado é congelado e expõe só `aplicarMovimentacao`.
+
+`aplicarMovimentacao(produto, tipo, quantidade)` não altera `produto` e valida nesta ordem: produto, tipo, quantidade, saldo.
+
+| Situação | Retorno |
+|---|---|
+| Entrada válida | `{ ok: true, estoque: produto.stock + quantidade }` |
+| Saída válida (`quantidade <= stock`) | `{ ok: true, estoque: produto.stock - quantidade }` |
+| Produto inválido (não objeto, sem `name` texto ou `stock` inteiro >= 0) | `{ ok: false, estoque: null, campo: 'produto', erro: 'Selecione um produto válido.' }` |
+| Tipo diferente de `'entrada'`/`'saida'` (exato, sem trim) | `{ ok: false, estoque: stock, campo: 'tipo', erro: 'Tipo de operação inválido.' }` |
+| Quantidade que não é número inteiro seguro maior que zero (string, `NaN`, decimal, 0, negativa) | `{ ok: false, estoque: stock, campo: 'quantidade', erro: 'Informe uma quantidade inteira maior que zero.' }` |
+| Saída maior que o saldo | `{ ok: false, estoque: stock, campo: 'quantidade', erro: 'Saída de X un. maior que o saldo atual (Y un.) de <produto>.' }` |
+
+No sucesso o objeto tem só `ok` e `estoque`. O nome do produto entra cru na mensagem; a interface a exibe com `textContent`. O saldo nunca fica negativo (decisão provisória; a pergunta ao cliente segue pendente).
+
 ## 5. Listeners (L55–L63)
 
 | Linha | Seletor | Evento | Ação | UC |
@@ -563,6 +586,9 @@ Não muda de aba (`tab` não é chamada) e não fecha diálogos (R27). Como `#re
 | L60 | `#category-filter` | `change` | `renderProducts` | UC-03 |
 | L61 | `#move-btn` | `click` | `openMovement` | UC-07 |
 | L61 | `#movement-form` | `submit` | `saveMovement` | UC-07 |
+| v1.5 | `#move-product` | `change` | `onMovementFieldChange` | UC-07 |
+| v1.5 | `#move-type` | `change` | `onMovementFieldChange` | UC-07 |
+| v1.5 | `#move-quantity` | `input` | `onMovementFieldChange` | UC-07 |
 | L62 | `#export-btn` | `click` | `exportCsv` | UC-09 |
 | L63 | `#reset-btn` | `click` | arrow inline (seção 4.21) | UC-10 |
 
@@ -669,28 +695,22 @@ flowchart TD
 
 ### 7.3 Registrar movimentação
 
-Fluxo mais importante da aplicação (UC-07). Só a entrada altera o estoque; a saída é validada contra o estoque atual, mas não o reduz (D1).
+Fluxo mais importante da aplicação (UC-07). Desde a v1.5, entrada soma e saída subtrai (D1 corrigido), com a validação centralizada em `aplicarMovimentacao`.
 O registro grava o nome do produto (D5) e a data em ISO UTC.
 
 ```mermaid
 flowchart TD
-  S["submit movement-form (L61)"] --> PD["preventDefault e leitura dos campos (L53)"]
-  PD --> V{"produto existe e quantidade inteira maior ou igual a 1?"}
-  V -->|"não"| E1["notify Verifique os dados da movimentação. e return - diálogo aberto"]
-  V -->|"sim"| SA{"tipo = saida e quantidade maior que estoque?"}
-  SA -->|"sim"| E2["notify A quantidade solicitada supera o estoque disponível. e return - diálogo aberto"]
-  SA -->|"não"| EN{"tipo = entrada?"}
-  EN -->|"sim"| ADD["p.stock soma a quantidade"]
-  EN -->|"não"| D1N["estoque NÃO muda - D1 para saida, D7 para tipo desconhecido"]
-  ADD --> PUSH["push do movimento com product = nome (D5) e date ISO UTC"]
-  D1N --> PUSH
+  S["submit movement-form"] --> PD["preventDefault e leitura dos campos"]
+  PD --> AM["result = aplicarMovimentacao(p, type, quantity)"]
+  AM --> OK{"result.ok?"}
+  OK -->|"não, campo quantidade"| E1["showMovementError sob Quantidade - diálogo aberto, nada gravado"]
+  OK -->|"não, produto ou tipo"| E2["notify result.erro - diálogo aberto, nada gravado"]
+  OK -->|"sim"| ST["p.stock = result.estoque (entrada soma, saída subtrai)"]
+  ST --> PUSH["push do movimento com product = nome (D5) e date ISO UTC"]
   PUSH --> PS["persist()"]
   PS --> R["render()"]
   R --> C["movement-dialog close()"]
   C --> N["notify Movimentação registrada com sucesso."]
-
-  classDef defect fill:#ffe0e0,stroke:#c00,color:#600
-  class D1N defect
 ```
 
 ### 7.4 Excluir produto

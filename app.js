@@ -1,6 +1,7 @@
 /* StockLab v1.4 - cenário fictício para continuidade de projeto. */
 (() => {
   'use strict';
+  const { aplicarMovimentacao } = window.StockLabRegras;
   const KEY = 'stocklab.demo.v14';
   const initialData = () => ({
     products: [
@@ -315,24 +316,54 @@
           `<option value="${p.id}">${escape(p.name)} · ${escape(p.sku)}</option>`,
       )
       .join('');
+    clearMovementError();
+    updateMovementBalance();
     $('movement-dialog').showModal();
+  }
+  function selectedMovementProduct() {
+    return data.products.find((x) => x.id === Number($('move-product').value));
+  }
+  function clearMovementError() {
+    $('move-quantity-error').textContent = '';
+    $('move-quantity-error').hidden = true;
+    $('move-quantity').removeAttribute('aria-invalid');
+  }
+  function showMovementError(message) {
+    $('move-quantity-error').textContent = message;
+    $('move-quantity-error').hidden = false;
+    $('move-quantity').setAttribute('aria-invalid', 'true');
+    $('move-quantity').focus();
+  }
+  function updateMovementBalance() {
+    const p = selectedMovementProduct();
+    if (!p) {
+      $('move-balance').textContent = '';
+      return;
+    }
+    const type = $('move-type').value;
+    const r = aplicarMovimentacao(p, type, Number($('move-quantity').value));
+    let text = `Saldo atual: ${number(p.stock)} un.`;
+    if (r.ok)
+      text += ` · Após a ${type === 'saida' ? 'saída' : 'entrada'}: ${number(r.estoque)} un.`;
+    $('move-balance').textContent = text;
+  }
+  function onMovementFieldChange() {
+    clearMovementError();
+    updateMovementBalance();
   }
   function saveMovement(event) {
     event.preventDefault();
-    const id = Number($('move-product').value),
-      type = $('move-type').value,
+    const type = $('move-type').value,
       quantity = Number($('move-quantity').value),
       note = $('move-note').value.trim(),
-      p = data.products.find((x) => x.id === id);
-    if (!p || !Number.isInteger(quantity) || quantity < 1) {
-      notify('Verifique os dados da movimentação.');
+      p = selectedMovementProduct();
+    const result = aplicarMovimentacao(p, type, quantity);
+    if (!result.ok) {
+      if (result.campo === 'quantidade') showMovementError(result.erro);
+      else notify(result.erro);
       return;
     }
-    if (type === 'saida' && quantity > p.stock) {
-      notify('A quantidade solicitada supera o estoque disponível.');
-      return;
-    }
-    if (type === 'entrada') p.stock += quantity;
+    p.stock = result.estoque;
     data.movements.push({
       id: Math.max(0, ...data.movements.map((m) => m.id)) + 1,
       product: p.name,
@@ -394,6 +425,9 @@
   $('category-filter').addEventListener('change', renderProducts);
   $('move-btn').addEventListener('click', openMovement);
   $('movement-form').addEventListener('submit', saveMovement);
+  $('move-product').addEventListener('change', onMovementFieldChange);
+  $('move-type').addEventListener('change', onMovementFieldChange);
+  $('move-quantity').addEventListener('input', onMovementFieldChange);
   $('export-btn').addEventListener('click', exportCsv);
   $('reset-btn').addEventListener('click', () => {
     if (

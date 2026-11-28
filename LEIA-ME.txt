@@ -15,12 +15,25 @@ ARQUIVOS
 index.html - estrutura da interface
 styles.css - aparencia das telas
 app.js - regras da aplicacao e armazenamento local
+regras.js - regras de negocio puras (movimentacao de estoque)
 Roteiro_Alunos_StockLab.pdf - orientacoes da atividade
 
 AMBIENTE
 Pode abrir diretamente no navegador, sem instalar Node, banco de dados ou Docker.
 Em navegadores que restringem armazenamento local em arquivos, a turma pode
 utilizar a extensao Live Server do VS Code ou um servidor local HTTP simples.
+
+ATUALIZACAO v1.5 - SAIDA DE ESTOQUE (issue #1)
+A partir desta versao a saida reduz o saldo e saidas maiores que o saldo
+sao bloqueadas. Quem usou a v1.4 neste navegador pode ter saldos acima do
+real (as saidas antigas nao foram descontadas). Depois de atualizar,
+clique em "Restaurar dados" para voltar aos dados de demonstracao.
+Atencao: isso apaga os produtos e movimentacoes cadastrados neste navegador.
+
+TESTES AUTOMATIZADOS (opcional, exige Node 22+)
+npm run test:unit   - regras de negocio (regras.js)
+npm run test:e2e    - navegador (exige Playwright + Chromium instalados)
+npm test            - tudo
 
 AVISO
 Software demonstrativo, sem autenticacao e sem backend; nao usar para dados reais.

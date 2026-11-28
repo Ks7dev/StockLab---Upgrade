@@ -1,0 +1,13 @@
+{
+  "name": "stocklab",
+  "version": "1.5.0-dev",
+  "private": true,
+  "description": "StockLab - painel de estoque estático (HTML/CSS/JS, abre via file://)",
+  "scripts": {
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "node --test \"test/unit/*.test.js\"",
+    "test:e2e": "node --test --test-concurrency=1 \"test/e2e/*.test.js\"",
+    "format": "npx --yes prettier@3.10.1 --write --no-error-on-unmatched-pattern app.js regras.js \"test/**/*.js\"",
+    "format:check": "npx --yes prettier@3.10.1 --check --no-error-on-unmatched-pattern app.js regras.js \"test/**/*.js\""
+  }
+}

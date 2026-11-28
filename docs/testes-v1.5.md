@@ -80,7 +80,7 @@
 
 | ID | Chrome | Firefox | Desktop | Celular | Responsável | Observações |
 |---|---|---|---|---|---|---|
-| T1.1 – T1.6 | ☐ | ☐ | ☐ | ☐ | Integrante 1 | |
+| T1.1 – T1.6 | ☐ | ☐ | ☐ | ☐ | Integrante 1 | Automatizado (Chromium headless): `npm run test:e2e`; Firefox e celular: manual pendente |
 | T2.1 – T2.4 | ☐ | ☐ | ☐ | ☐ | Integrante 2 | |
 | T3.1 – T3.5 | ☐ | ☐ | ☐ | ☐ | Integrante 3 | |
 | T4.1 – T4.5 | ☐ | ☐ | ☐ | ☐ | Integrante 4 | |

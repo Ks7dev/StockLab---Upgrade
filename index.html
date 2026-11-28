@@ -6,6 +6,7 @@
   <meta name="color-scheme" content="light">
   <title>StockLab | Painel de estoque</title>
   <link rel="stylesheet" href="styles.css">
+  <script defer src="regras.js"></script>
   <script defer src="app.js"></script>
 </head>
 <body>
@@ -49,6 +50,28 @@
     </div>
   </div>
   <dialog id="product-dialog" class="dialog"><form id="product-form" method="dialog" class="dialog-inner"><div class="dialog-top"><div><span class="label-overline">CATÁLOGO</span><h2 id="product-dialog-title">Novo produto</h2></div><button type="button" class="close-btn" data-close="product-dialog" aria-label="Fechar">✕</button></div><input type="hidden" id="product-id"><div class="form-grid"><label class="full">Nome do produto<input id="input-name" required maxlength="70" placeholder="Ex.: Mouse sem fio"></label><label>Código (SKU)<input id="input-sku" required maxlength="20" placeholder="Ex.: ACE-015"></label><label>Categoria<select id="input-category"><option>Informática</option><option>Escritório</option><option>Acessórios</option></select></label><label>Preço unitário (R$)<input id="input-price" type="number" step="0.01" min="0" required></label><label>Quantidade<input id="input-stock" type="number" step="1" min="0" required></label></div><div class="dialog-actions"><button type="button" class="button ghost" data-close="product-dialog">Cancelar</button><button type="submit" class="button primary">Salvar produto</button></div></form></dialog>
-  <dialog id="movement-dialog" class="dialog"><form id="movement-form" method="dialog" class="dialog-inner"><div class="dialog-top"><div><span class="label-overline">OPERAÇÃO</span><h2>Nova movimentação</h2></div><button type="button" class="close-btn" data-close="movement-dialog" aria-label="Fechar">✕</button></div><div class="form-grid"><label class="full">Produto<select id="move-product" required></select></label><label>Tipo de operação<select id="move-type"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></label><label>Quantidade<input id="move-quantity" type="number" min="1" step="1" required value="1"></label><label class="full">Observação<input id="move-note" maxlength="80" placeholder="Ex.: Reposição do fornecedor"></label></div><div class="dialog-actions"><button type="button" class="button ghost" data-close="movement-dialog">Cancelar</button><button type="submit" class="button primary">Registrar movimentação</button></div></form></dialog>
+  <dialog id="movement-dialog" class="dialog">
+    <form id="movement-form" method="dialog" class="dialog-inner" novalidate>
+      <div class="dialog-top">
+        <div><span class="label-overline">OPERAÇÃO</span><h2>Nova movimentação</h2></div>
+        <button type="button" class="close-btn" data-close="movement-dialog" aria-label="Fechar">✕</button>
+      </div>
+      <div class="form-grid">
+        <label class="full">Produto<select id="move-product" required></select></label>
+        <label>Tipo de operação<select id="move-type"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></label>
+        <div class="field">
+          <label for="move-quantity">Quantidade</label>
+          <input id="move-quantity" type="number" min="1" step="1" required value="1" inputmode="numeric" aria-describedby="move-balance move-quantity-error">
+          <p id="move-quantity-error" class="field-error" role="alert" hidden></p>
+        </div>
+        <p id="move-balance" class="full form-hint" aria-live="polite"></p>
+        <label class="full">Observação<input id="move-note" maxlength="80" placeholder="Ex.: Reposição do fornecedor"></label>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="button ghost" data-close="movement-dialog">Cancelar</button>
+        <button type="submit" class="button primary">Registrar movimentação</button>
+      </div>
+    </form>
+  </dialog>
 </body>
 </html>

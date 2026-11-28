@@ -1,6 +1,15 @@
 /* StockLab v1.4 - cenário fictício para continuidade de projeto. */
 (() => {
   'use strict';
+  if (!window.StockLabRegras) {
+    const aviso = document.createElement('div');
+    aviso.className = 'load-error';
+    aviso.setAttribute('role', 'alert');
+    aviso.textContent =
+      'Não foi possível carregar o arquivo regras.js. Confirme que ele está na mesma pasta do index.html e recarregue a página.';
+    document.body.prepend(aviso);
+    return;
+  }
   const { aplicarMovimentacao } = window.StockLabRegras;
   const KEY = 'stocklab.demo.v14';
   const initialData = () => ({
@@ -113,13 +122,22 @@
           "'": '&#39;',
         })[ch],
     );
-  let data;
-  try {
-    const saved = JSON.parse(localStorage.getItem(KEY));
-    data = saved?.products && saved?.movements ? saved : initialData();
-  } catch {
-    data = initialData();
-  }
+  // Lê os dados gravados; devolve null se não houver ou se estiverem inválidos.
+  const readStorage = () => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY));
+      return saved?.products && saved?.movements ? saved : null;
+    } catch {
+      return null;
+    }
+  };
+  let data = readStorage() ?? initialData();
+  // Outra aba pode ter gravado depois da última leitura: sincroniza antes de
+  // decidir qualquer movimentação (evita saída acima do saldo real).
+  const syncFromStorage = () => {
+    const saved = readStorage();
+    if (saved) data = saved;
+  };
   const persist = () => {
     try {
       localStorage.setItem(KEY, JSON.stringify(data));
@@ -353,6 +371,7 @@
   }
   function saveMovement(event) {
     event.preventDefault();
+    syncFromStorage();
     const type = $('move-type').value,
       quantity = Number($('move-quantity').value),
       note = $('move-note').value.trim(),
@@ -429,6 +448,13 @@
   $('move-type').addEventListener('change', onMovementFieldChange);
   $('move-quantity').addEventListener('input', onMovementFieldChange);
   $('export-btn').addEventListener('click', exportCsv);
+  // Mudança feita em outra aba: atualiza a tela e a prévia de saldo.
+  window.addEventListener('storage', (e) => {
+    if (e.key !== null && e.key !== KEY) return;
+    syncFromStorage();
+    render();
+    if ($('movement-dialog').open) updateMovementBalance();
+  });
   $('reset-btn').addEventListener('click', () => {
     if (
       confirm(

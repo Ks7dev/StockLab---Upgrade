@@ -4,3 +4,5 @@
 .form-hint{margin:0;font-size:12px;color:var(--muted)}
 .field-error{margin:0;font-size:12px;font-weight:600;color:var(--red)}
 .form-grid input[aria-invalid="true"]{border-color:var(--red);outline-color:var(--red)}
+/* Issue #1 (revisão) - aviso quando regras.js não carrega */
+.load-error{margin:0;padding:14px 20px;background:#fff0ee;color:var(--red);font-size:13px;font-weight:700;border-bottom:1px solid var(--red)}

@@ -119,7 +119,7 @@ Os seis primeiros defeitos catalogados são os seguintes. Lista completa D1 a D1
 |---|---|---|---|
 | D1 | Saída não reduz o estoque | `app.js` L53 | cartão #1 |
 | D2 | Edição não grava o preço | `app.js` L50 | cartão #3 |
-| D3 | "Valor em estoque" soma só os preços unitários | `app.js` L38 | cartão #2 |
+| D3 | "Valor em estoque" soma só os preços unitários (**corrigido na v1.5**) | `app.js` L38 (v1.4) | cartão #2 |
 | D4 | Exclusão de produto sem confirmação | `app.js` L51, L59 | cartão #4 |
 | D5 | Movimentação referencia o produto pelo nome | `app.js` L53, L51 | cartão #5 |
 | D6 | "Produto atualizado." exibido mesmo se o id não for encontrado | `app.js` L50 | cartão #3 (citado) |
@@ -137,4 +137,4 @@ O código não possui autenticação, perfis nem verificação de permissão. **
 
 - Não cobre o PDF `Roteiro_Alunos_StockLab.pdf`.
 - O CSS é citado por seletor, pois `styles.css` é um arquivo de uma linha só.
-- Nenhum código foi executado para produzir este material; valores numéricos (por exemplo o total de 61 unidades e o valor exibido de R$ 4.382,10 nos dados de demonstração) foram calculados à mão a partir de `initialData` (`app.js` L5–L21).
+- Nenhum código foi executado para produzir este material; valores numéricos (por exemplo o total de 61 unidades e o valor exibido de R$ 4.382,10 na v1.4 nos dados de demonstração; na v1.5 o card mostra R$ 25.072,00) foram calculados à mão a partir de `initialData` (`app.js` L5–L21).

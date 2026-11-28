@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const regras = require('../../regras.js');
 
-const { aplicarMovimentacao } = regras;
+const { aplicarMovimentacao, calcularValorEmEstoque } = regras;
 
 const mouse = (stock) => ({
   id: 2,
@@ -188,9 +188,13 @@ test('U19: nome do produto entra cru na mensagem (sem escape)', () => {
   );
 });
 
-test('U20: API exporta somente aplicarMovimentacao e o objeto é congelado', () => {
+test('U20: API exporta aplicarMovimentacao e calcularValorEmEstoque (nesta ordem) e o objeto é congelado', () => {
   assert.equal(typeof regras.aplicarMovimentacao, 'function');
-  assert.deepStrictEqual(Object.keys(regras), ['aplicarMovimentacao']);
+  assert.equal(typeof regras.calcularValorEmEstoque, 'function');
+  assert.deepStrictEqual(Object.keys(regras), [
+    'aplicarMovimentacao',
+    'calcularValorEmEstoque',
+  ]);
   assert.ok(Object.isFrozen(regras));
 });
 
@@ -237,4 +241,204 @@ test('U24 (revisão de segurança): saldo acima do inteiro seguro (dado adultera
     campo: 'produto',
     erro: 'Selecione um produto válido.',
   });
+});
+
+// ---- calcularValorEmEstoque (issue #2) ----
+
+const assertMonetario = (r) => {
+  assert.equal(typeof r, 'number');
+  assert.ok(Number.isFinite(r), `não finito: ${r}`);
+  assert.ok(r >= 0 && !Object.is(r, -0), `negativo/-0: ${r}`);
+  assert.equal(Number(r.toFixed(2)), r, `mais de 2 casas: ${r}`);
+};
+
+const exemplo = () => [
+  { id: 1, name: 'Notebook Slim 14', price: 2899.9, stock: 7 },
+  { id: 2, name: 'Mouse sem fio Pro', price: 89.9, stock: 3 },
+  { id: 3, name: 'Teclado compacto', price: 159.9, stock: 12 },
+  { id: 4, name: 'Caderno executivo A5', price: 27.5, stock: 4 },
+  { id: 5, name: 'Monitor LED 24', price: 829, stock: 2 },
+  { id: 6, name: 'Caneta gel azul', price: 7.9, stock: 28 },
+  { id: 7, name: 'Hub USB-C', price: 119, stock: 5 },
+  { id: 8, name: 'Webcam Full HD', price: 249, stock: 0 },
+];
+const valido = () => ({ price: 10, stock: 3 });
+
+test('V1 (T2.1): dados de exemplo valem R$ 25.072,00 (preço × quantidade)', () => {
+  const r = calcularValorEmEstoque(exemplo());
+  assertMonetario(r);
+  assert.equal(r, 25072);
+});
+
+test('V2 (T2.4): lista vazia vale 0 (e não -0)', () => {
+  const r = calcularValorEmEstoque([]);
+  assertMonetario(r);
+  assert.equal(r, 0);
+  assert.ok(Object.is(r, 0));
+});
+
+test('V3: entrada que não é array vale 0 e não lança', () => {
+  const entradas = [
+    undefined,
+    null,
+    {},
+    'abc',
+    42,
+    { length: 1, 0: { price: 1, stock: 1 } },
+  ];
+  for (const e of entradas) {
+    const r = calcularValorEmEstoque(e);
+    assertMonetario(r);
+    assert.equal(r, 0, `entrada: ${String(e)}`);
+  }
+});
+
+test('V4: 0.1 + 0.2 vale 0.3 (sem erro de ponto flutuante)', () => {
+  const r = calcularValorEmEstoque([
+    { price: 0.1, stock: 1 },
+    { price: 0.2, stock: 1 },
+  ]);
+  assertMonetario(r);
+  assert.equal(r, 0.3);
+});
+
+test('V5: produtos que dariam erro em float valem o valor exato', () => {
+  const casos = [
+    [{ price: 89.9, stock: 3 }, 269.7],
+    [{ price: 159.9, stock: 12 }, 1918.8],
+    [{ price: 7.9, stock: 28 }, 221.2],
+    [{ price: 7.9, stock: 12 }, 94.8],
+  ];
+  for (const [produto, esperado] of casos) {
+    const r = calcularValorEmEstoque([produto]);
+    assertMonetario(r);
+    assert.equal(r, esperado, JSON.stringify(produto));
+  }
+});
+
+test('V6 (T2.2/T2.3): o valor acompanha o saldo (saída e entrada)', () => {
+  const comMouse1 = exemplo();
+  comMouse1[1].stock = 1;
+  const saida = calcularValorEmEstoque(comMouse1);
+  assertMonetario(saida);
+  assert.equal(saida, 24892.2);
+  const comCaneta40 = exemplo();
+  comCaneta40[5].stock = 40;
+  const entrada = calcularValorEmEstoque(comCaneta40);
+  assertMonetario(entrada);
+  assert.equal(entrada, 25166.8);
+});
+
+test('V7: saldo zero ou preço zero contribuem 0 (nunca -0)', () => {
+  const listas = [
+    [{ price: 249, stock: 0 }],
+    [{ price: 0, stock: 5 }],
+    [{ price: -0, stock: 5 }],
+  ];
+  for (const lista of listas) {
+    const r = calcularValorEmEstoque(lista);
+    assertMonetario(r);
+    assert.equal(r, 0);
+    assert.ok(Object.is(r, 0));
+  }
+});
+
+test('V8: preço inválido é ignorado e não afeta os demais itens', () => {
+  const invalidos = [
+    NaN,
+    Infinity,
+    -Infinity,
+    -0.01,
+    -10,
+    '89.9',
+    '',
+    null,
+    undefined,
+    true,
+    {},
+    [],
+  ];
+  for (const p of invalidos) {
+    const r = calcularValorEmEstoque([{ price: p, stock: 2 }, valido()]);
+    assertMonetario(r);
+    assert.equal(r, 30, `price: ${String(p)}`);
+  }
+});
+
+test('V9: saldo inválido é ignorado e não afeta os demais itens', () => {
+  const invalidos = [-1, 1.5, NaN, Infinity, '3', null, undefined, 2 ** 53];
+  for (const s of invalidos) {
+    const r = calcularValorEmEstoque([{ price: 10, stock: s }, valido()]);
+    assertMonetario(r);
+    assert.equal(r, 30, `stock: ${String(s)}`);
+  }
+});
+
+test('V10: itens que não são objeto e posições vazias são ignorados', () => {
+  const r = calcularValorEmEstoque([null, undefined, 42, 'x', [], valido()]);
+  assertMonetario(r);
+  assert.equal(r, 30);
+  const esparso = [];
+  esparso[1] = valido();
+  const r2 = calcularValorEmEstoque(esparso);
+  assertMonetario(r2);
+  assert.equal(r2, 30);
+});
+
+test('V11: preço absurdo (centavos fora do inteiro seguro) é ignorado', () => {
+  const r = calcularValorEmEstoque([{ price: 1e300, stock: 1 }, valido()]);
+  assertMonetario(r);
+  assert.equal(r, 30);
+});
+
+test('V12: exato no limite de Number.MAX_SAFE_INTEGER centavos', () => {
+  const r = calcularValorEmEstoque([
+    { price: 0.01, stock: Number.MAX_SAFE_INTEGER },
+  ]);
+  assertMonetario(r);
+  assert.equal(r, 90071992547409.91);
+});
+
+test('V13: acima do limite seguro o resultado é finito e positivo (aproximado)', () => {
+  const r = calcularValorEmEstoque([
+    { price: 2899.9, stock: Number.MAX_SAFE_INTEGER },
+    { price: 2899.9, stock: Number.MAX_SAFE_INTEGER },
+  ]);
+  assert.ok(Number.isFinite(r) && r > 0);
+});
+
+test('V14: listas grandes não acumulam erro de ponto flutuante', () => {
+  const a = calcularValorEmEstoque(
+    Array.from({ length: 10000 }, () => ({ price: 0.1, stock: 3 })),
+  );
+  assertMonetario(a);
+  assert.equal(a, 3000);
+  const b = calcularValorEmEstoque(
+    Array.from({ length: 100000 }, () => ({ price: 89.9, stock: 3 })),
+  );
+  assertMonetario(b);
+  assert.equal(b, 26970000);
+});
+
+test('V15: preço com 3 casas (fora do domínio) é arredondado em centavos', () => {
+  const r = calcularValorEmEstoque([{ price: 0.125, stock: 4 }]);
+  assertMonetario(r);
+  assert.equal(r, 0.52);
+});
+
+test('V16: não muta a entrada (congelada) e é determinística', () => {
+  const entrada = exemplo();
+  entrada.forEach((p) => Object.freeze(p));
+  Object.freeze(entrada);
+  const copia = structuredClone(entrada);
+  let r1;
+  let r2;
+  assert.doesNotThrow(() => {
+    r1 = calcularValorEmEstoque(entrada);
+    r2 = calcularValorEmEstoque(entrada);
+  });
+  assertMonetario(r1);
+  assert.equal(r1, 25072);
+  assert.equal(r2, r1);
+  assert.deepStrictEqual(entrada, copia);
 });

@@ -5,7 +5,8 @@ Versão documentada: StockLab v1.4 (app.js 65 linhas, index.html 54 linhas, styl
 [Voltar ao README](README.md)
 
 > **Nota de versão (v1.5).** Este documento descreve a v1.4, exceto onde marcado "v1.5". A issue #1 corrigiu D1: R15 e R17 e o fluxo da
-> seção 3.3 foram atualizados; as referências `Lnn` são da v1.4 original (commit `ceb1b68`), pois o `app.js` foi reformatado com Prettier.
+> seção 3.3 foram atualizados. A issue #2 corrigiu D3: R22 e a seção D3 foram atualizadas (o card "Valor em estoque" agora soma preço × quantidade
+> com `calcularValorEmEstoque`, em `regras.js`). As referências `Lnn` são da v1.4 original (commit `ceb1b68`), pois o `app.js` foi reformatado com Prettier.
 
 Este documento é o ponto único de verdade das regras de negócio e dos defeitos do StockLab v1.4. Os demais
 documentos de `docs/codigo/` apenas referenciam os IDs `R..` (regras) e `D..` (defeitos) definidos aqui.
@@ -38,14 +39,14 @@ formato `app.js L53` e `index.html L51`; para o CSS (uma linha só) usa-se o sel
 
 | Status | Quantidade | Regras |
 |---|---|---|
-| Correto | 16 | R01, R05, R07, R13, R14, R15, R16, R17, R20, R21, R23, R25, R26, R27, R28, R29 |
-| Defeituoso | 4 | R11, R12, R18, R22 |
+| Correto | 17 | R01, R05, R07, R13, R14, R15, R16, R17, R20, R21, R22, R23, R25, R26, R27, R28, R29 |
+| Defeituoso | 3 | R11, R12, R18 |
 | Limitação | 8 | R02, R03, R04, R06, R08, R10, R19, R24 |
 | Ausente | 1 | R09 |
 | **Total** | **29** | |
 
 Observações de classificação: R26 carrega ressalva ("correto / limitação por D12") e foi contada como Correto.
-Na v1.5 (issue #1), R15 passou a efetiva e R17 passou de Defeituoso a Correto (D1 corrigido).
+Na v1.5 (issue #1), R15 passou a efetiva e R17 passou de Defeituoso a Correto (D1 corrigido). Na v1.5 (issue #2), R22 passou de Defeituoso a Correto (D3 corrigido).
 
 Defeitos com cartão no plano v1.5 (ver [plano-v1.5.md](../plano-v1.5.md)):
 
@@ -53,7 +54,7 @@ Defeitos com cartão no plano v1.5 (ver [plano-v1.5.md](../plano-v1.5.md)):
 |---|---|---|
 | D1 | Saída não reduz o estoque | #1 (**corrigido na v1.5**) |
 | D2 | Edição não grava o preço | #3 |
-| D3 | "Valor em estoque" soma só os preços unitários | #2 |
+| D3 | "Valor em estoque" soma só os preços unitários | #2 (**corrigido na v1.5**) |
 | D4 | Exclusão de produto sem confirmação | #4 |
 | D5 | Movimentação referencia o produto pelo nome | #5 |
 
@@ -389,22 +390,33 @@ const low=data.products.filter(p=>p.stock<5).sort((a,b)=>a.stock-b.stock);
 
 **Status:** Correto. **Defeito relacionado:** nenhum (mas depende de D1 para refletir saídas). **UC afetado:** UC-01.
 
-### R22 — "Valor em estoque" soma só os preços
+### R22 — "Valor em estoque" soma preço × quantidade
 
-**Regra implementada:** o indicador soma `price` de cada produto, sem multiplicar por `stock`.
+**Regra implementada (v1.5):** o indicador mostra a soma de `price × stock` de todos os produtos, calculada em centavos inteiros por `calcularValorEmEstoque(data.products)` (`regras.js`) e formatada por `money()`.
+Itens inválidos (`price` não finito ou negativo, `stock` que não seja inteiro seguro ≥ 0, qualquer valor que não seja número — inclusive strings numéricas — e elementos que não sejam objetos) são ignorados, sem coerção de tipo; lista vazia ou entrada que não seja array vale R$ 0,00. A legenda do card é "Soma de preço × quantidade em estoque.".
 
-**Código:** `app.js` L38.
+**Código (v1.5):** `render` em `app.js` (linha do `metric-value`) e `calcularValorEmEstoque` em `regras.js`.
+
+```js
+$('metric-value').textContent = money(calcularValorEmEstoque(data.products));
+```
+
+**Status:** Correto (v1.5). **Defeito relacionado:** D3 (corrigido). **UC afetado:** UC-01.
+
+> [!NOTE]
+> **Corrigido na v1.5 (issue #2) — D3: "Valor em estoque" soma preço × quantidade**
+> Com a demonstração, o card mostra R$ 25.072,00 (antes: R$ 4.382,10). Cobertura: `test/unit/regras.test.js` (V1–V16) e `test/e2e/valor.e2e.test.js` (EV1–EV13).
+
+**Histórico (v1.4):**
+
+- **Regra implementada:** o indicador somava `price` de cada produto, sem multiplicar por `stock`.
+- **Código:** `app.js` L38.
 
 ```js
 $('metric-value').textContent=money(data.products.reduce((sum,p)=>sum+p.price,0));
 ```
 
-**Status:** Defeituoso. **Defeito relacionado:** D3. **UC afetado:** UC-01.
-
-> [!WARNING]
-> **Comportamento atual / defeito conhecido — D3: "Valor em estoque" soma só os preços unitários**
-> `app.js` L38: `reduce((sum,p)=>sum+p.price,0)` — falta `p.price*p.stock`.
-> Efeito: com a demonstração, o painel mostra R$ 4.382,10 em vez de R$ 25.072,00. Tratado no plano v1.5, cartão #2.
+- **Status:** Defeituoso. **Defeito relacionado:** D3.
 
 ### R23 — Painel mostra as 4 movimentações mais recentes
 
@@ -547,7 +559,13 @@ if(id){const p=data.products.find(x=>x.id===id);if(p){p.name=name;p.sku=sku;p.ca
   3. Aparece o toast "Produto atualizado." e a tabela continua mostrando R$ 89,90.
 - **Efeito:** edição de preço é perdida em silêncio; o painel (R22) e o CSV também seguem com o preço antigo.
 
-### D3 — "Valor em estoque" soma só os preços unitários
+### D3 — "Valor em estoque" soma só os preços unitários (corrigido na v1.5, issue #2)
+
+> [!NOTE]
+> **Corrigido na v1.5 (issue #2) — D3.** O card passou a mostrar Σ preço × quantidade (R$ 25.072,00 na demonstração), calculado por `calcularValorEmEstoque` (`regras.js`) em centavos inteiros, e a legenda agora é "Soma de preço × quantidade em estoque.".
+> A issue #2 cita "D2" por engano; o defeito do indicador é D3 (D2 = edição não grava o preço, issue #3).
+
+**Histórico (v1.4):**
 
 - **Onde:** `app.js` L38. **Gravidade:** Alta. **Plano v1.5:** cartão #2.
 - **Código:**
@@ -573,6 +591,9 @@ $('metric-value').textContent=money(data.products.reduce((sum,p)=>sum+p.price,0)
 | **Soma de preço × estoque** | | **61 unidades** | **25.072,00** |
 
 - **Efeito:** o valor exibido não muda ao entrar ou sair estoque e subestima o patrimônio da demonstração em cerca de 83%.
+
+**Correção (v1.5):** `calcularValorEmEstoque(produtos)` soma `Math.round(price * 100) * stock` em centavos inteiros e divide por 100 no fim (sem erro de ponto flutuante), ignorando itens inválidos. `render` usa `money(calcularValorEmEstoque(data.products))`.
+**Testes:** `test/unit/regras.test.js` (V1–V16, U20) e `test/e2e/valor.e2e.test.js` (EV1–EV13). Pendência relacionada: editar só o preço ainda não altera o card, porque a edição não grava o preço (D2, issue #3).
 
 ### D4 — Exclusão de produto sem confirmação
 
@@ -740,7 +761,7 @@ const lines=filtered().map(p=>[p.sku,p.name,p.category,p.price,p.stock]);
 | R19 | D7 | UC-07, UC-08, UC-01 | `app.js` L53, L43, L48 |
 | R20 | — | UC-01, UC-03 | `app.js` L34, L39, L40 |
 | R21 | — | UC-01 | `app.js` L39–L41 |
-| R22 | D3 | UC-01 | `app.js` L38 |
+| R22 | D3 (corrigido) | UC-01 | `render` (`app.js`) e `calcularValorEmEstoque` (`regras.js`); v1.4: `app.js` L38 |
 | R23 | — | UC-01 | `app.js` L42–L43 |
 | R24 | D9 | UC-03, UC-09 | `app.js` L46 |
 | R25 | — | UC-03, UC-09, UC-01 | `app.js` L47, L54, L60 |

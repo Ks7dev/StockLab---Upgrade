@@ -6,3 +6,7 @@
 .form-grid input[aria-invalid="true"]{border-color:var(--red);outline-color:var(--red)}
 /* Issue #1 (revisão) - aviso quando regras.js não carrega */
 .load-error{margin:0;padding:14px 20px;background:#fff0ee;color:var(--red);font-size:13px;font-weight:700;border-bottom:1px solid var(--red)}
+/* Issue #2 - "R$ 25.072,00" é mais largo que o valor antigo e quebrava no meio do número em cards estreitos: a fonte acompanha a largura do card (cqw) e, sem suporte, a da janela (vw). */
+.stat-number{font-size:clamp(20px,1.9vw,28px)}
+.stat-card{container-type:inline-size}
+@supports (width:1cqw){.stat-number{font-size:clamp(16px,12.5cqw,28px)}}

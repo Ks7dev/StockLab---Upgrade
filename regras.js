@@ -76,5 +76,28 @@
     return { ok: true, estoque: produto.stock - quantidade };
   }
 
-  return Object.freeze({ aplicarMovimentacao });
+  /**
+   * Valor do estoque: soma de preço × quantidade, calculada em centavos inteiros.
+   * Itens inválidos (preço não finito/negativo, saldo não inteiro seguro/negativo,
+   * tipos errados) são ignorados. Exato até Number.MAX_SAFE_INTEGER centavos.
+   * Reutilizável no back-end Node (ex.: GET /api/resumo).
+   * @param {Array<{price: number, stock: number}>} produtos
+   * @returns {number} Valor em reais (>= 0, finito, no máximo 2 casas decimais).
+   */
+  function calcularValorEmEstoque(produtos) {
+    if (!Array.isArray(produtos)) return 0;
+    let centavos = 0;
+    for (const produto of produtos) {
+      if (produto === null || typeof produto !== 'object') continue;
+      const { price, stock } = produto;
+      if (!Number.isFinite(price) || price < 0) continue;
+      if (!Number.isSafeInteger(stock) || stock < 0) continue;
+      const precoEmCentavos = Math.round(price * 100);
+      if (!Number.isSafeInteger(precoEmCentavos)) continue;
+      centavos += precoEmCentavos * stock;
+    }
+    return centavos / 100;
+  }
+
+  return Object.freeze({ aplicarMovimentacao, calcularValorEmEstoque });
 });

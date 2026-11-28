@@ -217,15 +217,14 @@ Valores derivados exibidos pelo painel (`render`, `app.js` L36–L39):
 |---|---|---|
 | Produtos | `products.length` (L36) | 8 |
 | Unidades | soma de `stock` (L37) | 61 |
-| Valor em estoque | soma de `price` (L38) | R$ 4.382,10 |
+| Valor em estoque | v1.5: Σ `price × stock` em centavos, por `calcularValorEmEstoque` (`regras.js`); v1.4: soma de `price` (L38) | R$ 25.072,00 (v1.4: R$ 4.382,10) |
 | Alertas | produtos com `stock < 5` (L39) | 4 (Webcam 0, Monitor 2, Mouse 3, Caderno 4) |
 
-Para contraste, o valor que resultaria de preço × estoque é R$ 25.072,00 (20.299,30 + 269,70 + 1.918,80 + 110,00 + 1.658,00 + 221,20 + 595,00 + 0,00).
+Composição do valor da demonstração (preço × estoque, R$ 25.072,00): 20.299,30 + 269,70 + 1.918,80 + 110,00 + 1.658,00 + 221,20 + 595,00 + 0,00.
 
-> [!WARNING]
-> **Comportamento atual / defeito conhecido — D3: "Valor em estoque" soma só os preços unitários**
-> `app.js` L38: `data.products.reduce((sum,p)=>sum+p.price,0)` — não multiplica por `p.stock`.
-> Efeito: o painel mostra R$ 4.382,10 em vez de R$ 25.072,00 com os dados da demonstração. Tratado no plano v1.5, cartão #2.
+> [!NOTE]
+> **Corrigido na v1.5 (issue #2) — D3: "Valor em estoque" soma preço × quantidade**
+> O painel mostra R$ 25.072,00 com os dados da demonstração (v1.4: R$ 4.382,10). Itens com `price` ou `stock` inválidos (negativos, não finitos, `null` e também strings, mesmo numéricas como `'89.9'`) não entram no card; a tabela de produtos pode exibi-los mesmo assim. O saneamento de dados corrompidos é a issue #5.
 
 > [!NOTE]
 > **Comportamento atual — D13: dados de demonstração inconsistentes**

@@ -10,7 +10,7 @@
     document.body.prepend(aviso);
     return;
   }
-  const { aplicarMovimentacao } = window.StockLabRegras;
+  const { aplicarMovimentacao, calcularValorEmEstoque } = window.StockLabRegras;
   const KEY = 'stocklab.demo.v14';
   const initialData = () => ({
     products: [
@@ -200,7 +200,7 @@
       data.products.reduce((sum, p) => sum + p.stock, 0),
     );
     $('metric-value').textContent = money(
-      data.products.reduce((sum, p) => sum + p.price, 0),
+      calcularValorEmEstoque(data.products),
     );
     $('metric-alerts').textContent = number(
       data.products.filter((p) => p.stock < 5).length,

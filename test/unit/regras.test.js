@@ -193,3 +193,48 @@ test('U20: API exporta somente aplicarMovimentacao e o objeto é congelado', () 
   assert.deepStrictEqual(Object.keys(regras), ['aplicarMovimentacao']);
   assert.ok(Object.isFrozen(regras));
 });
+
+test('U21 (revisão de segurança): entrada que ultrapassa o maior inteiro seguro é recusada', () => {
+  const produto = mouse(Number.MAX_SAFE_INTEGER);
+  const r = aplicarMovimentacao(produto, 'entrada', 1);
+  assert.equal(r.ok, false);
+  assert.equal(r.campo, 'quantidade');
+  assert.equal(r.estoque, Number.MAX_SAFE_INTEGER);
+  assert.equal(
+    r.erro,
+    `Entrada de 1 un. ultrapassa o saldo máximo permitido (${Number.MAX_SAFE_INTEGER} un.) de Mouse sem fio Pro.`,
+  );
+  assert.equal(produto.stock, Number.MAX_SAFE_INTEGER);
+});
+
+test('U22 (revisão de segurança): entrada que chega exatamente ao limite é aceita', () => {
+  assert.deepStrictEqual(
+    aplicarMovimentacao(mouse(Number.MAX_SAFE_INTEGER - 5), 'entrada', 5),
+    { ok: true, estoque: Number.MAX_SAFE_INTEGER },
+  );
+});
+
+test('U23 (revisão de segurança): duas entradas gigantes não corrompem o saldo', () => {
+  const primeira = aplicarMovimentacao(
+    mouse(0),
+    'entrada',
+    Number.MAX_SAFE_INTEGER,
+  );
+  assert.equal(primeira.ok, true);
+  const segunda = aplicarMovimentacao(
+    mouse(primeira.estoque),
+    'entrada',
+    Number.MAX_SAFE_INTEGER,
+  );
+  assert.equal(segunda.ok, false);
+  assert.equal(segunda.estoque, Number.MAX_SAFE_INTEGER);
+});
+
+test('U24 (revisão de segurança): saldo acima do inteiro seguro (dado adulterado) é produto inválido', () => {
+  assert.deepStrictEqual(aplicarMovimentacao(mouse(2 ** 60), 'saida', 1), {
+    ok: false,
+    estoque: null,
+    campo: 'produto',
+    erro: 'Selecione um produto válido.',
+  });
+});

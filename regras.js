@@ -12,7 +12,7 @@
   /**
    * Aplica uma movimentação de estoque sem alterar o produto recebido.
    * Ordem de validação: produto, tipo, quantidade, saldo.
-   * @param {{name: string, stock: number}} produto Produto com saldo inteiro >= 0.
+   * @param {{name: string, stock: number}} produto Produto com saldo inteiro seguro >= 0.
    * @param {'entrada'|'saida'} tipo Tipo da operação (exato, sem trim).
    * @param {number} quantidade Número inteiro seguro maior que zero (string não é aceita).
    * @returns {{ok: true, estoque: number} | {ok: false, estoque: number|null, campo: string, erro: string}}
@@ -23,7 +23,7 @@
       produto !== null &&
       typeof produto === 'object' &&
       typeof produto.name === 'string' &&
-      Number.isInteger(produto.stock) &&
+      Number.isSafeInteger(produto.stock) &&
       produto.stock >= 0;
     if (!produtoValido) {
       return {
@@ -54,7 +54,16 @@
       };
     }
     if (tipo === 'entrada') {
-      return { ok: true, estoque: produto.stock + quantidade };
+      const novoSaldo = produto.stock + quantidade;
+      if (!Number.isSafeInteger(novoSaldo)) {
+        return {
+          ok: false,
+          estoque: produto.stock,
+          campo: 'quantidade',
+          erro: `Entrada de ${quantidade} un. ultrapassa o saldo máximo permitido (${Number.MAX_SAFE_INTEGER} un.) de ${produto.name}.`,
+        };
+      }
+      return { ok: true, estoque: novoSaldo };
     }
     if (quantidade > produto.stock) {
       return {

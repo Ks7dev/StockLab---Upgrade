@@ -207,3 +207,38 @@ test('EV12 celular (390 px): card visível e sem rolagem horizontal', () =>
     },
     { viewport: { width: 390, height: 844 } },
   ));
+
+// Achado da validação visual: "R$ 25.072,00" quebrava no meio do número
+// ("R$ 25.072,0" / "0") em cards estreitos. O número precisa caber em 1 linha.
+for (const largura of [1440, 1280, 1100, 800, 701, 390, 360]) {
+  test(`EV13 valor em uma única linha e dentro do card (${largura} px)`, () =>
+    comApp(
+      async ({ page }) => {
+        const m = await page.evaluate(() => {
+          const num = document.getElementById('metric-value');
+          const card = num.closest('.stat-card').getBoundingClientRect();
+          const fonte = parseFloat(getComputedStyle(num).fontSize);
+          const caixa = num.getBoundingClientRect();
+          return {
+            fonte,
+            altura: caixa.height,
+            direita: caixa.right,
+            cardDireita: card.right,
+            larguraTexto: num.scrollWidth,
+            larguraCaixa: num.clientWidth,
+          };
+        });
+        assert.ok(
+          m.altura <= m.fonte * 1.5,
+          `valor quebrou em mais de uma linha (altura ${m.altura}px, fonte ${m.fonte}px)`,
+        );
+        assert.ok(
+          m.larguraTexto <= m.larguraCaixa,
+          `texto (${m.larguraTexto}px) maior que a caixa (${m.larguraCaixa}px)`,
+        );
+        assert.ok(m.direita <= m.cardDireita, 'valor ultrapassa o card');
+        assert.ok(m.fonte >= 16, `fonte ${m.fonte}px abaixo do mínimo legível`);
+      },
+      { viewport: { width: largura, height: 800 } },
+    ));
+}

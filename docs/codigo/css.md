@@ -4,6 +4,10 @@ Versão documentada: StockLab v1.4 (app.js 65 linhas, index.html 54 linhas, styl
 
 Voltar ao [README](README.md).
 
+> **Nota de versão (v1.5).** Este documento descreve a v1.4, exceto onde marcado "v1.5". A issue #2 acrescentou ao fim do `styles.css` (depois das
+> regras da issue #1) uma regra de fonte responsiva para os números dos cards de indicadores (seção 6.4); por isso o arquivo deixou de ser uma linha única
+> e passou a ter linhas de comentário e de regras acrescentadas na v1.5.
+
 Como o `styles.css` tem uma única linha minificada, todas as referências deste documento usam o **seletor**
 no formato `styles.css .toast.visible`. Referências a `app.js` e `index.html` usam número de linha.
 
@@ -180,7 +184,7 @@ Três variantes de `.state-badge` representam a situação do produto. A classe 
 | `.pill` | 11px | 700 | |
 | `.button` | 12px | 700 | |
 | `.stat-heading` | 12px | 600 | |
-| `.stat-number` | 28px | 800 | `letter-spacing:-.8px`, `overflow-wrap:anywhere` |
+| `.stat-number` | 28px (v1.5: responsivo, de 16px a 28px; ver 6.4) | 800 | `letter-spacing:-.8px`, `overflow-wrap:anywhere` |
 | `.stat-caption` | 11px | | |
 | `.panel-head p` | 12px | | |
 | `.tag` | 10px | 700 | |
@@ -274,6 +278,20 @@ A coluna "Gerado por" indica se a classe vem do HTML estático (`index.html`) ou
 | `.stat-grid`, `.stat-card` | Grade de 4 cartões brancos | HTML (L30–L35) |
 | `.stat-heading`, `.stat-icon`, `.stat-icon.warn` | Título com ícone quadrado; o ícone `warn` é âmbar | HTML |
 | `.stat-number`, `.stat-caption` | Número grande e legenda | HTML; o texto dos `#metric-*` é preenchido por `render` (`app.js` L36–L39) |
+
+**Fonte responsiva dos números dos cards (v1.5, issue #2).** Com o valor correto, o texto de `#metric-value` ("R$ 25.072,00") ficou mais largo que o valor antigo ("R$ 4.382,10") e, com `overflow-wrap:anywhere` e fonte fixa de 28px, quebrava no meio do número em cards estreitos (1280, 1100, 701, 390 e 360 px). As três regras acrescentadas ao fim de `styles.css` são:
+
+```css
+.stat-number{font-size:clamp(20px,1.9vw,28px)}
+.stat-card{container-type:inline-size}
+@supports (width:1cqw){.stat-number{font-size:clamp(16px,12.5cqw,28px)}}
+```
+
+- **Regra principal (container query):** o card é um contêiner de tamanho em linha (`container-type:inline-size`) e a fonte do número acompanha a largura do card (`12.5cqw`), limitada entre 16px (mínimo de legibilidade) e 28px. A fonte é a mesma nos 4 cards, porque todos têm a mesma largura.
+- **Fallback:** se o navegador não suporta unidades `cqw` (`@supports (width:1cqw)` falso), vale `clamp(20px,1.9vw,28px)`, que acompanha a largura da janela e nunca fica abaixo de 20px. Navegadores com suporte a container queries: Chrome/Edge 105+, Firefox 110+, Safari 16+.
+- **Precedência:** as regras vêm depois da base (`.stat-number{font-size:28px}`) e do `@media(max-width:700px)` (`24px`), com a mesma especificidade, e por isso as substituem em todas as larguras; os 24px do breakpoint de 700px deixam de valer.
+- **Medição (Chromium, valor R$ 25.072,00):** antes, quebrava em 2 linhas a 1280, 1100, 701, 390 e 360 px; depois, fica em 1 linha em 1440, 1280, 1100, 800, 701, 390 e 360 px (fonte de 27,1 / 22,1 / 16,5 / 27,4 / 21,3 / 18,1 / 16,3 px). Cobertura: `test/e2e/valor.e2e.test.js` (EV13).
+- **Limite:** o tamanho depende da largura do card, não do tamanho do texto; valores a partir de cerca de R$ 100 milhões ainda quebram em mais de uma linha (sem estourar o card nem criar rolagem horizontal). O mesmo tamanho vale para os outros três números (8, 61 e 4), que ficam menores que os 28px da v1.4 em larguras intermediárias.
 
 ### 6.5 Painéis e listas da Visão geral
 
@@ -383,7 +401,7 @@ Há duas consultas `max-width`. A faixa de 700px **acumula** as regras de 1050px
 | `.hero` | linha | linha | coluna, `align-items:flex-start` |
 | `.hero-actions` | flex, gap 10px | igual | `width:100%`, `justify-content:flex-start`; `.button` 11px |
 | `.stat-card` padding | `24px 22px` | igual | `17px 14px` |
-| `.stat-heading` / `.stat-number` | 12px / 28px | igual | 11px / 24px |
+| `.stat-heading` / `.stat-number` | 12px / 28px (v1.5: o número usa `clamp`, ver 6.4) | igual | 11px / 24px (v1.5: o número usa `clamp`, ver 6.4) |
 | `.panel-head` padding | `24px 24px 18px` | igual | `20px 16px 15px` |
 | `.low-list`, `.movement-list` padding | `0 24px 18px` | igual | `0 16px 15px` |
 | `.filters` | linha, `padding:3px 24px 18px` | igual | coluna, `padding:5px 16px 16px`; `select` com `width:100%` |

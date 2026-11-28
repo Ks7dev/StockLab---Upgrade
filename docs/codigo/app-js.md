@@ -5,8 +5,9 @@ Versão documentada: StockLab v1.4 (app.js 65 linhas, index.html 54 linhas, styl
 [Voltar ao README](README.md)
 
 > **Nota de versão (v1.5).** As referências `Lnn` deste documento são da v1.4 original (commit `ceb1b68`); após a formatação
-> Prettier da v1.5 os números de linha mudaram. Seções atualizadas na v1.5: 4.17, 4.18, 5 (eventos do diálogo de movimentação),
-> 7.3 e a subseção `regras.js` (4.22). A regra de movimentação saiu do `app.js` e vive em `regras.js` (a seção 1 continua
+> Prettier da v1.5 os números de linha mudaram. Seções atualizadas na v1.5: 4.10 (`render`, `#metric-value`, issue #2), 4.17, 4.18,
+> 5 (eventos do diálogo de movimentação), 7.3 e a subseção `regras.js` (4.22, com `aplicarMovimentacao` e
+> `calcularValorEmEstoque`). A regra de movimentação e o cálculo do valor em estoque saíram do `app.js` e vivem em `regras.js` (a seção 1 continua
 > válida para o restante: `app.js` não exporta nada nem escreve em `window`; apenas lê `window.StockLabRegras`).
 
 Este documento descreve o que o `app.js` faz hoje, função por função, com a linha do código em cada afirmação.
@@ -96,7 +97,7 @@ const initialData = () => ({ products: [ {id:1,name:'Notebook Slim 14',sku:'INF-
 ```
 
 As datas das movimentações de exemplo não têm fuso (`'2026-11-18T10:05:00'`, L17–L19). Resumo dos totais que o `render` calcula
-sobre esses dados: 8 produtos, 61 unidades, 4 alertas e o valor exibido R$ 4.382,10 (ver D3 em `render`).
+sobre esses dados: 8 produtos, 61 unidades, 4 alertas e o valor em estoque R$ 25.072,00 (v1.4 exibia R$ 4.382,10; ver D3 em `render`).
 
 > [!NOTE]
 > **Comportamento atual — D13: dados de demonstração inconsistentes**
@@ -259,7 +260,7 @@ O limite 5 é um literal repetido em L34, L39 e L40.
 - **Escreve / efeitos (DOM):**
   - `#metric-products` ← `number(data.products.length)` (L36).
   - `#metric-units` ← `number(soma de p.stock)` (L37).
-  - `#metric-value` ← `money(soma de p.price)` (L38).
+  - `#metric-value` ← `money(calcularValorEmEstoque(data.products))` (v1.5; v1.4: `money(soma de p.price)`, L38).
   - `#metric-alerts` ← `number(contagem de p.stock<5)` (L39).
   - `#low-stock-list` ← linhas `.item-row` dos produtos com `stock<5`, ordenados por estoque crescente, com `.qty-tag` "N unidade(s)"; lista vazia mostra "Nenhum produto em atenção neste momento." (L40–L41, R21).
   - `#recent-movements` ← as 4 últimas movimentações (`[...data.movements].reverse().slice(0,4)`, L42); lista vazia mostra "Ainda não há movimentações registradas." (L43, R23).
@@ -269,6 +270,9 @@ O limite 5 é um literal repetido em L34, L39 e L40.
 - Não usa `localStorage` nem toast. Recalcula tudo a cada chamada, inclusive a cada troca de aba.
 
 ```js
+// v1.5 (issue #2)
+$('metric-value').textContent = money(calcularValorEmEstoque(data.products));
+// Histórico (v1.4, L38)
 $('metric-value').textContent=money(data.products.reduce((sum,p)=>sum+p.price,0));
 ```
 
@@ -277,10 +281,9 @@ Detalhes do painel de movimentações recentes (L43): o ícone é `↗` com a cl
 Com os dados de demonstração, a lista mostra, do mais recente ao mais antigo: Monitor LED 24 (saída, -1), Caneta gel azul (entrada, +12), Mouse sem fio Pro (saída, -2).
 A lista de atenção mostra Webcam Full HD (0), Monitor LED 24 (2), Mouse sem fio Pro (3) e Caderno executivo A5 (4).
 
-> [!WARNING]
-> **Comportamento atual / defeito conhecido — D3: "Valor em estoque" soma só os preços unitários**
-> `app.js` L38: `$('metric-value').textContent=money(data.products.reduce((sum,p)=>sum+p.price,0));` — `p.price` é somado sem multiplicar por `p.stock`.
-> Efeito: com os dados de demonstração o painel mostra R$ 4.382,10 (soma dos 8 preços), enquanto preço × estoque daria R$ 25.072,00. O card em `index.html` L33 se chama "Valor em estoque" e a legenda é "Avaliação do estoque atual". Tratado no plano v1.5, cartão #2.
+> [!NOTE]
+> **Corrigido na v1.5 (issue #2) — D3: "Valor em estoque" soma preço × quantidade**
+> O `render` usa `money(calcularValorEmEstoque(data.products))`: com os dados de demonstração o card mostra R$ 25.072,00 (v1.4: R$ 4.382,10, soma só de `p.price`). A legenda em `index.html` (card "Valor em estoque") agora é "Soma de preço × quantidade em estoque." (v1.4: "Avaliação do estoque atual"). Itens com `price`/`stock` inválidos são ignorados (ver 4.22). Cobertura: `test/unit/regras.test.js` (V1–V16) e `test/e2e/valor.e2e.test.js` (EV1–EV13). Editar só o preço ainda não muda o card porque a edição não grava o preço (D2, issue #3).
 
 > [!WARNING]
 > **Comportamento atual / defeito conhecido — D7: tipo desconhecido aparece como "Entrada" no painel**
@@ -555,9 +558,9 @@ if(confirm('Restaurar os dados iniciais da demonstração? ...')){data=initialDa
 
 Não muda de aba (`tab` não é chamada) e não fecha diálogos (R27). Como `#reset-btn` fica no bloco `hero` do `index.html` (L27), fora das seções `.tab-content`, o botão está disponível em todas as abas; o mesmo vale para `#add-btn`.
 
-### 4.22 `regras.js` e `aplicarMovimentacao` (v1.5)
+### 4.22 `regras.js`: `aplicarMovimentacao` e `calcularValorEmEstoque` (v1.5)
 
-`regras.js` (raiz do projeto) contém a regra de movimentação como função pura, sem DOM, sem `Date` e sem `localStorage`. É um UMD mínimo (IIFE): no navegador publica `window.StockLabRegras`; no Node, `module.exports`. É carregado por `<script defer src="regras.js">` antes de `app.js`, e `app.js` faz `const { aplicarMovimentacao } = window.StockLabRegras;` logo após `'use strict'`. Sem `import`/`export` (não funcionam via `file://`). O objeto exportado é congelado e expõe só `aplicarMovimentacao`.
+`regras.js` (raiz do projeto) contém a regra de movimentação como função pura, sem DOM, sem `Date` e sem `localStorage`. É um UMD mínimo (IIFE): no navegador publica `window.StockLabRegras`; no Node, `module.exports`. É carregado por `<script defer src="regras.js">` antes de `app.js`, e `app.js` faz `const { aplicarMovimentacao, calcularValorEmEstoque } = window.StockLabRegras;` logo após `'use strict'`. Sem `import`/`export` (não funcionam via `file://`). O objeto exportado é congelado e expõe só `aplicarMovimentacao` e `calcularValorEmEstoque` (nesta ordem).
 
 `aplicarMovimentacao(produto, tipo, quantidade)` não altera `produto` e valida nesta ordem: produto, tipo, quantidade, saldo.
 
@@ -571,6 +574,19 @@ Não muda de aba (`tab` não é chamada) e não fecha diálogos (R27). Como `#re
 | Saída maior que o saldo | `{ ok: false, estoque: stock, campo: 'quantidade', erro: 'Saída de X un. maior que o saldo atual (Y un.) de <produto>.' }` |
 
 No sucesso o objeto tem só `ok` e `estoque`. O nome do produto entra cru na mensagem; a interface a exibe com `textContent`. O saldo nunca fica negativo (decisão provisória; a pergunta ao cliente segue pendente).
+
+#### `calcularValorEmEstoque(produtos)` (issue #2)
+
+Função pura que devolve o valor do estoque: Σ `price × stock`. Chamada por `render` para o card "Valor em estoque" e pensada para ser reutilizada no `GET /api/resumo` do back-end Node.
+
+- **Entrada:** array de objetos com `price` e `stock`. Se não for array (`undefined`, `null`, objeto, texto, número, array-like), retorna `0`.
+- **Saída:** número em reais, `>= 0`, finito, nunca `-0` nem `NaN`, com no máximo 2 casas decimais (é `centavos / 100`); pode ir direto para `money()` ou para JSON.
+- **Cálculo em centavos inteiros:** cada preço vira `Math.round(price * 100)` e é multiplicado por `stock`; os centavos são somados e divididos por 100 uma única vez no fim. Assim não há erro de ponto flutuante (por exemplo `0.1 + 0.2` vale `0.3` e `89.9 × 3` vale `269.7`). Preço com mais de 2 casas (só por dado adulterado) é arredondado por unidade.
+- **Itens inválidos são ignorados** (contribuem 0), sem coerção de tipo: elemento que não é objeto; `price` que não é número finito `>= 0` (inclusive strings numéricas como `'89.9'`, `null`, `NaN`, `Infinity`, negativos e valores cujos centavos não são inteiro seguro); `stock` que não é inteiro seguro `>= 0` (inclusive `'3'`, decimais e negativos). Os demais itens continuam somando.
+- **Limite:** exato até `Number.MAX_SAFE_INTEGER` centavos (R$ 90.071.992.547.409,91); acima disso o resultado continua finito e `>= 0`, porém aproximado.
+- Não altera a entrada (funciona com array e objetos congelados) e nunca lança.
+
+Consequência conhecida: com dado adulterado a tabela de produtos pode exibir `money('89.9')` (R$ 89,90) ou `R$ NaN` no preço, mas o card não conta esse item; o saneamento de dados corrompidos é a issue #5.
 
 ## 5. Listeners (L55–L63)
 

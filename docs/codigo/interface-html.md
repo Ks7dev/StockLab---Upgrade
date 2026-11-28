@@ -153,7 +153,7 @@ Contagem conferida no HTML: 38 atributos `id`. Todos são hooks de JavaScript; n
 | 7 | `tab-inicio` | `section.tab-content` | L29 | visível | só pela comparação `s.id` em `tab()` (L33) |
 | 8 | `metric-products` | `div.stat-number` | L31 | `-` | escreve em `render()` (L36) |
 | 9 | `metric-units` | `div.stat-number` | L32 | `-` | escreve em `render()` (L37) |
-| 10 | `metric-value` | `div.stat-number` | L33 | `-` | escreve em `render()` (L38) |
+| 10 | `metric-value` | `div.stat-number` | L34 (v1.4: L33) | `-` | escreve em `render()` (v1.4: L38) |
 | 11 | `metric-alerts` | `div.stat-number` | L34 | `-` | escreve em `render()` (L39) |
 | 12 | `low-stock-list` | `div.low-list` | L36 | vazio | escreve `innerHTML` (L41) |
 | 13 | `recent-movements` | `div.movement-list` | L37 | vazio | escreve `innerHTML` (L43) |
@@ -335,15 +335,14 @@ flowchart LR
 |---|---|---|
 | `metric-products` | `number(data.products.length)` | `app.js` L36 |
 | `metric-units` | `number(soma de p.stock)` | `app.js` L37 |
-| `metric-value` | `money(soma de p.price)` | `app.js` L38 |
+| `metric-value` | v1.5: `money(calcularValorEmEstoque(data.products))` (v1.4: `money(soma de p.price)`, `app.js` L38) | `render` (`app.js`) e `regras.js` |
 | `metric-alerts` | `number(produtos com stock < 5)` | `app.js` L39 |
 
 Estado vazio: com lista de produtos vazia, as métricas mostram `0` e `R$ 0,00` (resultado das somas), não o `-` inicial do HTML. O `-` só aparece antes da primeira execução de `render()` (L64).
 
-> [!WARNING]
-> **Comportamento atual / defeito conhecido — D3: "Valor em estoque" soma só os preços unitários**
-> `app.js` L38: `data.products.reduce((sum,p)=>sum+p.price,0)` — não multiplica por `p.stock`.
-> Efeito: na demonstração o cartão mostra R$ 4.382,10 em vez de R$ 25.072,00. Tratado no plano v1.5, cartão #2.
+> [!NOTE]
+> **Corrigido na v1.5 (issue #2) — D3: "Valor em estoque" soma preço × quantidade**
+> O cartão usa `money(calcularValorEmEstoque(data.products))`: na demonstração mostra R$ 25.072,00 (v1.4: R$ 4.382,10, soma só de `p.price`, `app.js` L38). Itens com `price`/`stock` inválidos são ignorados. Cobertura: `test/unit/regras.test.js` e `test/e2e/valor.e2e.test.js`.
 
 ### 8.2 `#low-stock-list` (`app.js` L40–L41)
 
@@ -442,7 +441,7 @@ Estado vazio: `<tr><td colspan="5">Nenhuma movimentação registrada.</td></tr>`
 | "StockLab • catálogo local" | rodapé da tabela de produtos | index.html L43 |
 | "StockLab © 2026 · Software fictício para atividade educacional" | `footer` | index.html L47 |
 
-Textos dos cartões de métrica (L31–L34): "Produtos cadastrados / Itens no catálogo", "Unidades em estoque / Somatório das quantidades", "Valor em estoque / Avaliação do estoque atual", "Produtos com alerta / Itens abaixo do nível recomendado". Painéis da visão geral (L36, L37): "Estoque em atenção" e "Últimas movimentações".
+Textos dos cartões de métrica (L31–L34): "Produtos cadastrados / Itens no catálogo", "Unidades em estoque / Somatório das quantidades", "Valor em estoque / Soma de preço × quantidade em estoque." (v1.4: "Avaliação do estoque atual"), "Produtos com alerta / Itens abaixo do nível recomendado". Painéis da visão geral (L36, L37): "Estoque em atenção" e "Últimas movimentações".
 
 Cabeçalhos de tabela: produtos (L42) Produto, Categoria, Valor unitário, Em estoque, Situação, Ações; movimentações (L45) Data, Produto, Operação, Quantidade, Observação.
 

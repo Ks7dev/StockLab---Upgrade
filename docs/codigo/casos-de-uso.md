@@ -115,7 +115,7 @@ Casos de uso com borda vermelha têm ao menos um defeito conhecido associado (D1
 
 ```mermaid
 flowchart LR
-  UC01(("UC-01 Painel: D3"))
+  UC01(("UC-01 Painel: D3 corrigido"))
   UC05(("UC-05 Editar: D2, D6"))
   UC06(("UC-06 Excluir: D4, D5"))
   UC07(("UC-07 Movimentar: D1, D5, D7"))
@@ -144,7 +144,7 @@ o objeto `{products, movements}` mantido em memória (`app.js` L26).
 2. O sistema chama `render()` (`app.js` L64).
 3. O sistema escreve o total de produtos em `#metric-products` (`app.js` L36).
 4. O sistema escreve a soma de `stock` em `#metric-units` (`app.js` L37).
-5. O sistema escreve a soma de `price` em `#metric-value`, formatada em BRL (`app.js` L38).
+5. O sistema escreve a soma de `price × stock` (`calcularValorEmEstoque`, `regras.js`) em `#metric-value`, formatada em BRL (`render`; v1.4: soma de `price`, `app.js` L38).
 6. O sistema conta produtos com `stock<5` em `#metric-alerts` (`app.js` L39).
 7. O sistema lista em `#low-stock-list` os produtos com `stock<5`, ordenados por estoque crescente, com nome, SKU, categoria e "N unidade(s)" (`app.js` L40–L41).
 8. O sistema lista em `#recent-movements` as 4 movimentações mais recentes, na ordem inversa da inserção, com seta, nome, tipo, data e quantidade com sinal (`app.js` L42–L43).
@@ -163,14 +163,14 @@ o objeto `{products, movements}` mantido em memória (`app.js` L26).
 
 **Rastreabilidade:** `render` L35–L45, `status` L34, `number` L24, `money` L23, `escape` L25; carga L64.
 
-Valores com os dados de demonstração: 8 produtos, 61 unidades, "Valor em estoque" exibido R$ 4.382,10, 4 alertas
+Valores com os dados de demonstração: 8 produtos, 61 unidades, "Valor em estoque" exibido R$ 25.072,00 (v1.4: R$ 4.382,10), 4 alertas
 (Webcam Full HD 0, Monitor LED 24 com 2, Mouse sem fio Pro com 3, Caderno executivo A5 com 4).
 
-> [!WARNING]
-> **Comportamento atual / defeito conhecido — D3: "Valor em estoque" soma só os preços unitários**
-> `app.js` L38: `data.products.reduce((sum,p)=>sum+p.price,0)` — não multiplica por `p.stock`.
-> Efeito: com a demonstração o painel mostra R$ 4.382,10, enquanto preço x estoque daria R$ 25.072,00; o rótulo
-> "Avaliação do estoque atual" (`index.html` L33) induz a leitura errada. Tratado no plano v1.5, cartão #2.
+> [!NOTE]
+> **Corrigido na v1.5 (issue #2) — D3: "Valor em estoque" soma preço × quantidade**
+> Com a demonstração o painel mostra R$ 25.072,00 (v1.4: R$ 4.382,10). A legenda do card (`index.html` L34) agora é
+> "Soma de preço × quantidade em estoque." (v1.4: "Avaliação do estoque atual", que induzia a leitura errada).
+> Itens com `price`/`stock` inválidos são ignorados no cálculo.
 
 ### UC-02 — Navegar entre seções
 
@@ -667,7 +667,7 @@ Notas:
 
 | UC | Funções | Linhas (app.js) | Regras | Defeitos | Cartão plano v1.5 |
 |---|---|---|---|---|---|
-| UC-01 Consultar painel | `render`, `status`, `money`, `number`, `escape` | L23–L25, L34, L35–L45, L64 | R02, R03, R20, R21, R22, R23, R28 | D3 | #2 |
+| UC-01 Consultar painel | `render`, `status`, `money`, `number`, `escape` | L23–L25, L34, L35–L45, L64 | R02, R03, R20, R21, R22, R23, R28 | D3 (corrigido na v1.5) | #2 |
 | UC-02 Navegar entre seções | `tab` | L33, L55, L56 | R25 | D11 | - |
 | UC-03 Buscar e filtrar produtos | `filtered`, `renderProducts` | L46, L47, L60 | R20, R24, R25, R28 | D9 | - |
 | UC-04 Cadastrar produto | `openProduct`, `saveProduct` | L49, L50, L58 | R05, R06, R07, R08, R09, R10 | D8, D10 | - |
